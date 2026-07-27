@@ -66,6 +66,15 @@ const SKINS = [
     thrustColor: 'rgba(118, 255, 3, 0.85)',
     verts: [[20,0],[-4,-4],[-12,-4],[-12,-8],[-8,-8],[-8,-4],[-4,-10],[0,-10],[0,10],[-4,10],[-8,4],[-8,8],[-12,8],[-12,4],[-4,4]],
   },
+  {
+    name: 'GIGANTE',
+    stroke: '#FFC107',
+    glow: '#FFC107',
+    thrustColor: 'rgba(255, 193, 7, 0.85)',
+    verts: [[18,0],[-14,-12],[-6,0],[-14,12]],
+    scale: 2,
+    scoreMult: 2,
+  },
 ];
 
 let skinIndex = 0;
@@ -232,7 +241,7 @@ class Ship {
     this.angle  = -Math.PI / 2;
     this.vx     = 0;
     this.vy     = 0;
-    this.radius = 12;
+    this.radius = 12 * (SKINS[skinIndex].scale || 1);
     this.thrusting     = false;
     this.invincible    = 3;
     this.shootCooldown = 0;
@@ -301,7 +310,7 @@ class Ship {
   tryShoot() {
     if (this.shootCooldown > 0 || this.dead) return [];
     this.shootCooldown = 0.2;
-    const NOSE = 21;
+    const NOSE = 21 * (SKINS[skinIndex].scale || 1);
     const ox = this.x + Math.cos(this.angle) * NOSE;
     const oy = this.y + Math.sin(this.angle) * NOSE;
     if (this.tripleShotTimer > 0) {
@@ -320,12 +329,14 @@ class Ship {
     if (this.invincible > 0 && Math.floor(this.invincible * 8) % 2 === 0) return;
 
     const skin = SKINS[skinIndex];
+    const scale = skin.scale || 1;
 
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
+    ctx.scale(scale, scale);
     ctx.strokeStyle = skin.stroke;
-    ctx.lineWidth   = 1.5;
+    ctx.lineWidth   = 1.5 / scale;
     ctx.lineJoin    = 'round';
 
     if (skin.glow) {
@@ -377,7 +388,7 @@ class Ship {
       ctx.shadowColor = '#00B4FF';
       ctx.shadowBlur  = 18;
       ctx.beginPath();
-      ctx.arc(this.x, this.y, 22, 0, Math.PI * 2);
+      ctx.arc(this.x, this.y, 22 * (skin.scale || 1), 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
       ctx.shadowBlur = 0;
@@ -579,15 +590,16 @@ function update(dt) {
 
   // Bala vs asteroide
   const newAsteroids = [];
+  const scoreMult = SKINS[skinIndex].scoreMult || 1;
   for (const b of bullets) {
     for (const a of asteroids) {
       if (!a.dead && !b.dead && dist(b, a) < a.radius) {
         b.dead = true;
         a.dead = true;
         if (a instanceof ShootingStar) {
-          score += 500;
+          score += 500 * scoreMult;
         } else {
-          score += POINTS[a.size];
+          score += POINTS[a.size] * scoreMult;
           if (Math.random() < 0.12)
             newAsteroids.push(new ShootingStar(a.x, a.y));
         }
@@ -609,7 +621,7 @@ function update(dt) {
       if (dist(ship, a) < ship.radius + a.radius * 0.82) {
         if (ship.shieldActive) {
           a.dead = true;
-          score += POINTS[a.size];
+          score += POINTS[a.size] * (SKINS[skinIndex].scoreMult || 1);
           explode(a.x, a.y, a.size * 5);
           newAsteroids.push(...a.split());
           if (Math.random() < 0.2) powerUps.push(new PowerUp(a.x, a.y));
@@ -628,8 +640,9 @@ function update(dt) {
 
   // Bala enemiga vs escudo
   if (ship.shieldActive) {
+    const shieldRadius = 22 * (SKINS[skinIndex].scale || 1);
     for (const b of bullets) {
-      if (!b.dead && dist(ship, b) < 22 + b.radius) {
+      if (!b.dead && dist(ship, b) < shieldRadius + b.radius) {
         b.dead = true;
         ship.shieldEnergy = Math.max(0, ship.shieldEnergy - ship.shieldHitDrain);
         if (ship.shieldEnergy <= 0) {
