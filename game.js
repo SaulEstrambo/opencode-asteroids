@@ -118,6 +118,60 @@ class Asteroid {
   }
 }
 
+// ── Shooting Star (Estrella Fugaz) ───────────────────────────────────────────
+class ShootingStar extends Asteroid {
+  constructor(x, y) {
+    super(x, y, 2);
+    const angle = rand(0, Math.PI * 2);
+    const speed = SPEEDS[2] * 2 + rand(-15, 15);
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed;
+    this.ttl  = 5;
+    this.life = 5;
+    this.points = 500;
+  }
+
+  update(dt) {
+    super.update(dt);
+    this.ttl -= dt;
+    if (this.ttl <= 0) {
+      this.dead = true;
+      explode(this.x, this.y, 6);
+    }
+  }
+
+  split() { return []; }
+
+  draw() {
+    const alpha = Math.max(0, this.ttl / this.life);
+    const flash = this.ttl < 1.5 && Math.floor(this.ttl * 8) % 2 === 0;
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rot);
+    ctx.globalAlpha = flash ? alpha * 0.5 : alpha;
+
+    // Brillo
+    ctx.strokeStyle = '#FFD700';
+    ctx.fillStyle   = 'rgba(255,215,0,0.12)';
+    ctx.lineWidth   = 2;
+    ctx.shadowColor = '#FFD700';
+    ctx.shadowBlur  = 16;
+    ctx.lineJoin    = 'round';
+    ctx.beginPath();
+    ctx.moveTo(this.verts[0][0], this.verts[0][1]);
+    for (let i = 1; i < this.verts.length; i++)
+      ctx.lineTo(this.verts[i][0], this.verts[i][1]);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+}
+
 // ── Ship ──────────────────────────────────────────────────────────────────────
 class Ship {
   constructor() { this.reset(); }
@@ -388,7 +442,13 @@ function update(dt) {
       if (!a.dead && !b.dead && dist(b, a) < a.radius) {
         b.dead = true;
         a.dead = true;
-        score += POINTS[a.size];
+        if (a instanceof ShootingStar) {
+          score += 500;
+        } else {
+          score += POINTS[a.size];
+          if (Math.random() < 0.12)
+            newAsteroids.push(new ShootingStar(a.x, a.y));
+        }
         explode(a.x, a.y, a.size * 5);
         newAsteroids.push(...a.split());
         if (Math.random() < 0.2) powerUps.push(new PowerUp(a.x, a.y));
