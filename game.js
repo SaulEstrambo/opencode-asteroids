@@ -12,7 +12,7 @@ const justPressed = {};
 window.addEventListener('keydown', e => {
   justPressed[e.code] = !keys[e.code];
   keys[e.code] = true;
-  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code))
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight'].includes(e.code))
     e.preventDefault();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
@@ -187,6 +187,14 @@ class Ship {
     this.invincible    = 3;
     this.shootCooldown = 0;
     this.speedBoostTimer = 0;
+    this.shieldActive      = false;
+    this.shieldEnergy      = 100;
+    this.shieldMaxEnergy   = 100;
+    this.shieldDrainRate   = 20;
+    this.shieldRechargeRate = 8;
+    this.shieldHitDrain    = 10;
+    this.shieldCooldown    = 0;
+    this.shieldCooldownTime = 3;
     this.dead          = false;
   }
 
@@ -200,6 +208,27 @@ class Ship {
     const DRAG   = 0.987;
 
     if (this.speedBoostTimer > 0) this.speedBoostTimer -= dt;
+
+    const wantsShield = keys['ShiftLeft'] || keys['ShiftRight'];
+    if (this.shieldCooldown > 0) {
+      this.shieldActive = false;
+      this.shieldCooldown -= dt;
+      if (this.shieldCooldown <= 0) {
+        this.shieldCooldown = 0;
+        this.shieldEnergy = 0;
+      }
+    } else if (wantsShield && this.shieldEnergy > 0) {
+      this.shieldActive = true;
+      this.shieldEnergy = Math.max(0, this.shieldEnergy - this.shieldDrainRate * dt);
+    } else {
+      this.shieldActive = false;
+      this.shieldEnergy = Math.min(this.shieldMaxEnergy, this.shieldEnergy + this.shieldRechargeRate * dt);
+    }
+
+    if (this.shieldEnergy <= 0 && this.shieldCooldown <= 0 && this.shieldActive) {
+      this.shieldActive = false;
+      this.shieldCooldown = this.shieldCooldownTime;
+    }
 
     if (keys['ArrowLeft'])  this.angle -= ROT * dt;
     if (keys['ArrowRight']) this.angle += ROT * dt;
@@ -268,6 +297,21 @@ class Ship {
     if (this.speedBoostTimer > 0) ctx.shadowBlur = 0;
 
     ctx.restore();
+
+    if (this.shieldActive) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(0, 180, 255, 0.6)';
+      ctx.fillStyle   = 'rgba(0, 180, 255, 0.18)';
+      ctx.lineWidth   = 2;
+      ctx.shadowColor = '#00B4FF';
+      ctx.shadowBlur  = 18;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, 22, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
   }
 }
 
@@ -462,8 +506,35 @@ function update(dt) {
   if (ship.invincible <= 0) {
     for (const a of asteroids) {
       if (dist(ship, a) < ship.radius + a.radius * 0.82) {
-        killShip();
-        break;
+        if (ship.shieldActive) {
+          a.dead = true;
+          score += POINTS[a.size];
+          explode(a.x, a.y, a.size * 5);
+          newAsteroids.push(...a.split());
+          if (Math.random() < 0.2) powerUps.push(new PowerUp(a.x, a.y));
+          ship.shieldEnergy = Math.max(0, ship.shieldEnergy - ship.shieldHitDrain);
+          if (ship.shieldEnergy <= 0) {
+            ship.shieldActive = false;
+            ship.shieldCooldown = ship.shieldCooldownTime;
+          }
+        } else {
+          killShip();
+          break;
+        }
+      }
+    }
+  }
+
+  // Bala enemiga vs escudo
+  if (ship.shieldActive) {
+    for (const b of bullets) {
+      if (!b.dead && dist(ship, b) < 22 + b.radius) {
+        b.dead = true;
+        ship.shieldEnergy = Math.max(0, ship.shieldEnergy - ship.shieldHitDrain);
+        if (ship.shieldEnergy <= 0) {
+          ship.shieldActive = false;
+          ship.shieldCooldown = ship.shieldCooldownTime;
+        }
       }
     }
   }
@@ -516,6 +587,29 @@ function drawHUD() {
     ctx.font = '14px monospace';
     ctx.textAlign = 'left';
     ctx.fillText(`VELOCIDAD  ${ship.speedBoostTimer.toFixed(1)}s`, 14, 50);
+  }
+
+  if (ship.shieldEnergy < ship.shieldMaxEnergy || ship.shieldActive || ship.shieldCooldown > 0) {
+    const barY = ship.speedBoostTimer > 0 ? 64 : 50;
+    const barW = 100;
+    const barH = 8;
+    const pct  = ship.shieldEnergy / ship.shieldMaxEnergy;
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fillRect(14, barY, barW, barH);
+    ctx.fillStyle = ship.shieldActive ? '#00E5FF' : '#0088CC';
+    ctx.fillRect(14, barY, barW * pct, barH);
+    ctx.strokeStyle = 'rgba(0,180,255,0.5)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(14, barY, barW, barH);
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px monospace';
+    ctx.textAlign = 'left';
+    if (ship.shieldCooldown > 0) {
+      ctx.fillStyle = '#FF4444';
+      ctx.fillText(`ESCUDO  RECARGANDO  ${ship.shieldCooldown.toFixed(1)}s`, 120, barY + 7);
+    } else {
+      ctx.fillText(`ESCUDO  ${Math.ceil(pct * 100)}%`, 120, barY + 7);
+    }
   }
 }
 
