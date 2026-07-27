@@ -27,7 +27,8 @@ jobs:
         uses: anomalyco/opencode/github@latest
         with:
           model: opencode-go/glm-5.2
-          prompt: "Review this PR and comment improvements"
+          prompt: Review this PR and comment improvements
           use_github_token: true
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
