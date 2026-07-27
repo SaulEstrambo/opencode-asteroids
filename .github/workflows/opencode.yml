@@ -28,6 +28,10 @@ jobs:
       - name: Run opencode
         uses: anomalyco/opencode/github@latest
         env:
-          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }} 
+          MODEL: opencode/big-pickle
+          PROMPT: "Review this PR and comment improvements"
+          USE_GITHUB_TOKEN: true
+
         with:
           model: opencode-go/glm-5.2
