@@ -5,7 +5,7 @@
 Single-file HTML5 Canvas game (Asteroids clone). Zero dependencies, no build step.
 
 - `index.html` — entry point (opens `game.js`)
-- `game.js` — all game logic (~420 lines)
+- `game.js` — all game logic (~560 lines)
 - Language: Spanish (UI text, comments, README)
 
 ## Run
@@ -18,8 +18,16 @@ No build, lint, test, or typecheck commands exist. The entire codebase is one va
 
 - Canvas is fixed 800x600. Game loop uses `requestAnimationFrame` with delta-time capped at 50ms.
 - World wraps toroidally (edges connect). Use the `wrap()` helper for all position updates.
-- Game states: `'playing'` | `'dead'` | `'gameover'` — managed via the `state` variable, not classes.
+- Game states: `'menu'` | `'playing'` | `'dead'` | `'gameover'` — managed via the `state` variable, not classes.
 - Input: `keys` map (held) and `justPressed` map (one-shot via `pressed()`). Never poll `keydown` directly in game logic.
+
+## Skins System
+
+- 5 ship skins defined in `SKINS[]` array (CLÁSICA, NÉON, FUEGO, FANTASMA, ROBO).
+- Each skin has: `name`, `stroke` (color), `glow` (optional shadow color), `thrustColor`, `verts` (2D polygon vertices).
+- `skinIndex` tracks selected skin (0–4). Persisted in `localStorage` key `'asteroids_skin'`.
+- Menu state (`'menu'`): ← → to cycle skins, Space to start game.
+- `Ship.draw()` and `drawLifeIcon()` read from `SKINS[skinIndex]` for silhouette and colors.
 
 ## Conventions
 
