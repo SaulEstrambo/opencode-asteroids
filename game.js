@@ -806,7 +806,6 @@ function drawHUD() {
       }
     }
   }
-  }
 }
 
 function drawOverlay(title, sub) {
